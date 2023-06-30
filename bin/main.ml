@@ -176,6 +176,16 @@ let read_file filename =
     raise e
 ;;
 
+let is_alpha = function
+  | 'a' .. 'z' | 'A' .. 'Z' -> true
+  | _ -> false
+;;
+
+let is_digit = function
+  | '0' .. '9' -> true
+  | _ -> false
+;;
+
 (* Skip until a newline character. *)
 let scan_til_newline (str : string) : string =
   let pos = String.index str '\n' in
@@ -184,9 +194,11 @@ let scan_til_newline (str : string) : string =
 ;;
 
 let capture_string (str : string) : string =
-  let pos = String.index str '"' in
-  String.sub str 0 pos
+  let pos = String.index_from str 1 '"' in
+  String.sub str 1 (pos - 1)
 ;;
+
+let capture_num (str : string) = if str = "" then None else Some 4
 
 (* Scan and construct an array of type [ token ]. *)
 let rec scan (str : string) : Scanner.token list =
@@ -251,8 +263,15 @@ let rec scan (str : string) : Scanner.token list =
           else [ LESS_THAN ], 1
         | '"' ->
           let captured_string = capture_string str in
-          let str_len = String.length captured_string in
+          let str_len = String.length captured_string + 3 in
           [ STRING_LITERAL captured_string ], str_len - 1
+          (* more complicated for decimal finding *)
+        | c when is_digit c ->
+          let captured_num = capture_num str in
+          let str_len = String.length captured_num in
+          [ INTEGER_LITERAL(2) ], str_len
+        | c when is_alpha c ->
+          [ AUTO ], 1
         | _ -> [], 1
       in
       status @ scan (String.sub str skip (len - skip))))
@@ -265,6 +284,7 @@ let print_file_contents filename =
   print_newline ()
 ;;
 
+(* Print a string of tokens to stdout. *)
 let rec print_tokens (tok : Scanner.token list) =
   match tok with
   | [] -> ()
@@ -274,6 +294,7 @@ let rec print_tokens (tok : Scanner.token list) =
     print_tokens rest
 ;;
 
+(* Run a file. *)
 let run filename =
   let contents = read_file filename in
   print_tokens (scan contents);
