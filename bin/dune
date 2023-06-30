@@ -1,0 +1,9 @@
+(executable
+ (public_name ascc)
+ (name main)
+ (libraries ascc))
+
+(env
+ (dev
+  (flags
+   (:standard -w -37 -w -32))))
