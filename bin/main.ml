@@ -1,9 +1,3 @@
-(* these are borrowd -I'm not sure they're actually sufficient to complete it *)
-(* type exp = Const of int
-type statement = Return of exp
-type fun_decl = Fun of string * statement
-type prog = Prog of fun_decl *)
-
 module Scanner = struct
   type token =
     (* single char tokens *)
@@ -186,7 +180,12 @@ let is_digit = function
   | _ -> false
 ;;
 
-(* Skip until a newline character. *)
+let is_white_space = function
+  | ' ' | '\t' | '\n' | '\r' -> true
+  | _ -> false
+;;
+
+(* Skip until a newline character and return the line without. *)
 let scan_til_newline (str : string) : string =
   let pos = String.index str '\n' in
   let len = String.length str in
@@ -198,7 +197,10 @@ let capture_string (str : string) : string =
   String.sub str 1 (pos - 1)
 ;;
 
-let capture_num (str : string) = if str = "" then None else Some 4
+(* Provide the captured string and the number it corresponds to. *)
+let capture_num (str : string) : (int * string) option =
+  if str = "" then None else Some (4, "fortnite")
+;;
 
 (* Scan and construct an array of type [ token ]. *)
 let rec scan (str : string) : Scanner.token list =
@@ -269,12 +271,55 @@ let rec scan (str : string) : Scanner.token list =
         | c when is_digit c ->
           let captured_num = capture_num str in
           let str_len = String.length captured_num in
-          [ INTEGER_LITERAL(2) ], str_len
-        | c when is_alpha c ->
-          [ AUTO ], 1
+          [ INTEGER_LITERAL 2 ], str_len
+        | c when is_alpha c -> [ AUTO ], 1
         | _ -> [], 1
       in
       status @ scan (String.sub str skip (len - skip))))
+;;
+
+(*
+General form of numbers in C:
+=============================
+(tested using clang version 14.0.3 on arm64 darwin 23.0)
+
+`4.00000`
+-> perfectly tolerable
+
+`4.`
+-> perfectly tolerable
+
+`4 .00000`
+-> incorrect, there's a space
+
+`4.00 000`
+-> incorrect
+
+`- 4.`
+-> correct
+
+`-4.`
+-> correct
+
+In fact, we can put in arbitrary whitespace between a `-` and the start of a
+number.  Even a newline is still valid. Essentially, we want to eat whitespace
+after the number until we get to the end.
+
+These all extend to integers as well from what I can tell.
+
+In fact, clang doesn't complain about casting a floating point number into an
+integer without any issue at all.
+*)
+
+let rec eat_number str : Scanner.token =
+  let c = String.get str 0 in
+  if String.length str = 0
+  then Scanner.ERROR "error"
+  else if is_digit c
+  then Scanner.AMPERSAND
+  else if is_white_space c
+  then Scanner.ERROR "df"
+  else Scanner.DO
 ;;
 
 (* Dump contents of the file to stdout. *)
