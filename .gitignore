@@ -32,3 +32,4 @@ nix/profiles/
 /.ci
 
 *.c
+*.out
