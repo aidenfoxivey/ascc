@@ -48,3 +48,14 @@ let index_func str f =
   in
   loop 0
 ;;
+
+let rec eat_integer str : string =
+  let c = String.get str 0 in
+  if is_digit c then
+    (String.make 1 c) ^ eat_integer (String.sub str 1 ((String.length str) - 1))
+  else ""
+;;
+
+let scan_integer str = 
+  int_of_string (eat_integer str)
+;;
