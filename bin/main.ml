@@ -1,3 +1,5 @@
+open Utilities
+
 module Scanner = struct
   type token =
     (* single char tokens *)
@@ -170,39 +172,19 @@ let read_file filename =
     raise e
 ;;
 
-let is_alpha = function
-  | 'a' .. 'z' | 'A' .. 'Z' -> true
-  | _ -> false
-;;
 
-let is_digit = function
-  | '0' .. '9' -> true
-  | _ -> false
-;;
 
-let is_white_space = function
-  | ' ' | '\t' | '\n' | '\r' -> true
-  | _ -> false
-;;
-
-(* Skip until a newline character and return the line without. *)
-let scan_til_newline (str : string) : string =
-  let pos = String.index str '\n' in
-  let len = String.length str in
-  String.sub str (pos + 1) (len - pos - 1)
-;;
-
-let capture_string (str : string) : string =
+let eat_string (str : string) : string =
   let pos = String.index_from str 1 '"' in
   String.sub str 1 (pos - 1)
 ;;
 
 (* Provide the captured string and the number it corresponds to. *)
-let capture_num (str : string) : (int * string) option =
+let eat_number (str : string) : (int * string) option =
   if str = "" then None else Some (4, "fortnite")
 ;;
 
-(* Scan and construct an array of type [ token ]. *)
+(* Scan source code as a string and construct an array of type [ token ]. *)
 let rec scan (str : string) : Scanner.token list =
   let open Scanner in
   let len = String.length str in
@@ -210,7 +192,7 @@ let rec scan (str : string) : Scanner.token list =
   then []
   else (
     let c = String.get str 0 in
-    if c = ' ' || c = '\t' || c = '\n' || c = '\r'
+    if is_whitespace c
     then scan (String.sub str 1 (len - 1))
     else if c = '/' && len > 1 && String.get str 1 = '/'
     then scan (scan_til_newline str)
