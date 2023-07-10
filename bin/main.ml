@@ -1,5 +1,14 @@
 open Utilities
 
+(* THIS IS A FISH
+ *       /`·.¸
+ *      /¸...¸`:·
+ *  ¸.·´  ¸   `·.¸.·´)
+ * : © ):´;      ¸  {
+ *  `·.¸ `·  ¸.·´\`·¸)
+ *      `\\´´\¸.·´
+ *)
+
 module Scanner = struct
   type token =
     (* single char tokens *)
@@ -172,8 +181,6 @@ let read_file filename =
     raise e
 ;;
 
-
-
 let eat_string (str : string) : string =
   let pos = String.index_from str 1 '"' in
   String.sub str 1 (pos - 1)
@@ -195,7 +202,10 @@ let rec scan (str : string) : Scanner.token list =
     if is_whitespace c
     then scan (String.sub str 1 (len - 1))
     else if c = '/' && len > 1 && String.get str 1 = '/'
-    then scan (scan_til_newline str)
+    then (
+      match eat_til_newline str with
+      | Some x -> scan x
+      | None -> [])
     else (
       let status, skip =
         match c with
