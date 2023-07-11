@@ -1,2 +1,11 @@
 (library
- (name ascc))
+ (name ascc)
+ (libraries base core)
+ (preprocess
+  (pps ppx_expect))
+ (inline_tests))
+
+(env
+ (dev
+  (flags
+   (:standard -w -37 -w -32 -w -27))))

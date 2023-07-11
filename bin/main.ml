@@ -1,5 +1,3 @@
-open Utilities
-
 (* THIS IS A FISH
  *       /`·.¸
  *      /¸...¸`:·
