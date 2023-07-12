@@ -1,3 +1,5 @@
+(* Copyright 2023 Aiden Fox Ivey. Subject to the 3-Clause BSD license. *)
+
 open Core
 open Utilities
 open Preprocessor
@@ -36,28 +38,15 @@ let%expect_test "capture string 2" =
 
 let%expect_test "foo" =
   show_macro { name = "FOO"; args = [ "" ]; body = "5" };
-  [%expect {||}]
+  [%expect {|FOO 5|}]
 ;;
 
 let%expect_test "parse define" =
-  match parse_define "#define BAR 897" with
-  | Some m, _ -> show_macro m; [%expect {||}]
-  | _, _ -> print_string "forn"; [%expect.unreachable]
+  match parse_define "#define BAR 897\n" with
+  | Some m, _ ->
+    show_macro m;
+    [%expect {|BAR 897|}]
+  | _, s ->
+    print_string s;
+    [%expect.unreachable]
 ;;
-
-(* The fail doesn't actually work. - It's not how expect tests are supposed to function. *)
-(* let%expect_test "capture string fail" =
-  let s1, s2 = capture_string "advanced \"Fortnite is the best game\" I've ever played" in
-  printf "%s" s1;
-  [%expect.unreachable]
-  [@@expect.uncaught_exn 
-    {|
-  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-     This is strongly discouraged as backtraces are fragile.
-     Please change this test to not include a backtrace. *)
-
-  (Ascc.Utilities.Not_start_with_quote)
-  Raised at Ascc__Utilities.capture_string in file "lib/utilities.ml", line 46, characters 2-28
-  Called from Ascc__Test.(fun) in file "lib/test.ml", line 37, characters 15-87
-  Called from Expect_test_collector.Make.Instance_io.exec in file "collector/expect_test_collector.ml", line 234, characters 12-19 |}]
-;; *)

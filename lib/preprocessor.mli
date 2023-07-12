@@ -1,3 +1,5 @@
+(* Copyright 2023 Aiden Fox Ivey. Subject to the 3-Clause BSD license. *)
+
 type macro =
   { name : string
   ; args : string list

@@ -1,3 +1,5 @@
+(* Copyright 2023 Aiden Fox Ivey. Subject to the 3-Clause BSD license. *)
+
 exception Not_start_with_quote
 
 let is_alpha = function
