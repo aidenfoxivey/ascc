@@ -3,82 +3,82 @@
 open Utilities
 
 type token =
-    (* single char tokens *)
-    | LEFT_BRACE
-    | RIGHT_BRACE
-    | LEFT_BRACKET
-    | RIGHT_BRACKET
-    | LEFT_PAREN
-    | RIGHT_PAREN
-    | SEMICOLON
-    | GREATER_THAN
-    | LESS_THAN
-    | FORE_SLASH
-    | BACK_SLASH
-    | PERCENT
-    | EQUALS
-    | AMPERSAND
-    | ASTERISK
-    | MINUS
-    | PLUS
-    (* double or triple char tokens *)
-    | MINUS_EQUAL
-    | DIV_EQUAL
-    | MUL_EQUAL
-    | AND_EQUALS
-    | LEFT_SHIFT
-    | RIGHT_SHIFT
-    | LEFT_SHIFT_EQUAL
-    | RIGHT_SHIFT_EQUAL
-    | EQUAL_EQUAL
-    | GREATER_THAN_EQUAL
-    | LESS_THAN_EQUAL
-    | NOT_EQUAL
-    | PLUS_PLUS
-    | MINUS_MINUS
-    | PLUS_EQUAL
-    (* literals *)
-    | STRING_LITERAL of string
-    | INTEGER_LITERAL of int
-    | FLOAT_LITERAL of float
-    | IDENTIFIER of string
-    | ERROR of string
-    (* keywords *)
-    | AUTO
-    | BREAK
-    | CASE
-    | CHAR
-    | CONST
-    | CONTINUE
-    | DEFAULT
-    | DO
-    | DOUBLE
-    | ELSE
-    | ENUM
-    | EXTERN
-    | FLOAT
-    | FOR
-    | GOTO
-    | IF
-    | INLINE
-    | INT
-    | LONG
-    | REGISTER
-    | RESTRICT
-    | RETURN
-    | SHORT
-    | SIGNED
-    | SIZEOF
-    | STATIC
-    | STRUCT
-    | SWITCH
-    | TYPEDEF
-    | UNION
-    | UNSIGNED
-    | VOID
-    | VOLATILE
-    | WHILE
-
+  (* single char tokens *)
+  | LEFT_BRACE
+  | RIGHT_BRACE
+  | LEFT_BRACKET
+  | RIGHT_BRACKET
+  | LEFT_PAREN
+  | RIGHT_PAREN
+  | SEMICOLON
+  | GREATER_THAN
+  | LESS_THAN
+  | FORE_SLASH
+  | BACK_SLASH
+  | PERCENT
+  | EQUALS
+  | AMPERSAND
+  | ASTERISK
+  | MINUS
+  | PLUS
+  (* double or triple char tokens *)
+  | MINUS_EQUAL
+  | DIV_EQUAL
+  | MUL_EQUAL
+  | AND_EQUALS
+  | LEFT_SHIFT
+  | RIGHT_SHIFT
+  | LEFT_SHIFT_EQUAL
+  | RIGHT_SHIFT_EQUAL
+  | EQUAL_EQUAL
+  | GREATER_THAN_EQUAL
+  | LESS_THAN_EQUAL
+  | NOT_EQUAL
+  | PLUS_PLUS
+  | MINUS_MINUS
+  | PLUS_EQUAL
+  (* literals *)
+  | STRING_LITERAL of string
+  | INTEGER_LITERAL of int
+  | FLOAT_LITERAL of float
+  | IDENTIFIER of string
+  | ERROR of string
+  (* keywords *)
+  | AUTO
+  | BREAK
+  | CASE
+  | CHAR
+  | CONST
+  | CONTINUE
+  | DEFAULT
+  | DO
+  | DOUBLE
+  | ELSE
+  | ENUM
+  | EXTERN
+  | FLOAT
+  | FOR
+  | GOTO
+  | IF
+  | INLINE
+  | INT
+  | LONG
+  | REGISTER
+  | RESTRICT
+  | RETURN
+  | SHORT
+  | SIGNED
+  | SIZEOF
+  | STATIC
+  | STRUCT
+  | SWITCH
+  | TYPEDEF
+  | UNION
+  | UNSIGNED
+  | VOID
+  | VOLATILE
+  | WHILE
+  | EOF
 
 let pretty_fmt_token (token : token) : string =
   let open Scanner in
@@ -157,10 +157,13 @@ let pretty_fmt_token (token : token) : string =
   | VOID -> "VOID"
   | VOLATILE -> "VOLATILE"
   | WHILE -> "WHILE"
+  | EOF -> "EOF"
 ;;
 
+exception Not_start_with_quote
+
 (* Print a string of tokens to stdout. *)
-let rec print_tokens (tok : token list) =
+let rec print_tokens tok =
   match tok with
   | [] -> ()
   | hd :: rest ->
@@ -169,46 +172,19 @@ let rec print_tokens (tok : token list) =
     print_tokens rest
 ;;
 
-(*
-General form of numbers in C:
-=============================
-(tested using clang version 14.0.3 on arm64 darwin 23.0)
-
-`4.00000`
--> perfectly tolerable
-
-`4.`
--> perfectly tolerable
-
-`4 .00000`
--> incorrect, there's a space
-
-`4.00 000`
--> incorrect
-
-`- 4.`
--> correct
-
-`-4.`
--> correct
-
-In fact, we can put in arbitrary whitespace between a `-` and the start of a
-number.  Even a newline is still valid. Essentially, we want to eat whitespace
-after the number until we get to the end.
-
-These all extend to integers as well from what I can tell.
-
-In fact, clang doesn't complain about casting a floating point number into an
-integer without any issue at all.
-*)
-
-let eat_string (str : string) : string =
-  let pos = String.index_from str 1 '"' in
-  String.sub str 1 (pos - 1)
+let eat_string str =
+  let first_char = String.get str 0 in
+  if first_char = '"'
+  then (
+    let pos = String.index_from str 1 '"' in
+    let len = String.length str in
+    let captured_string = String.sub str 1 (pos - 1) in
+    let trimmed_string = String.sub str (pos + 1) (len - pos - 1) in
+    captured_string, trimmed_string)
+  else raise Not_start_with_quote
 ;;
 
-
-let eat_number str : token =
+let scan_number str =
   let c = String.get str 0 in
   if String.length str = 0
   then ERROR "error"
@@ -219,8 +195,18 @@ let eat_number str : token =
   else DO
 ;;
 
+let rec eat_integer str =
+  let c = String.get str 0 in
+  if is_digit c
+  then String.make 1 c ^ eat_integer (String.sub str 1 (String.length str - 1))
+  else ""
+;;
+
+let scan_integer str = int_of_string (eat_integer str)
+let scan_float str = ()
+
 (* Scan source code as a string and construct an array of type [ token ]. *)
-let rec scan (str : string) : token list =
+let rec scan str =
   let open Scanner in
   let len = String.length str in
   if len = 0
@@ -297,4 +283,3 @@ let rec scan (str : string) : token list =
       in
       status @ scan (String.sub str skip (len - skip))))
 ;;
-
