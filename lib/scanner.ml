@@ -1,190 +1,259 @@
 (* Copyright 2023 Aiden Fox Ivey. Subject to the 3-Clause BSD license. *)
 
-open Utilities
+type symbol =
+  | Left_brace
+  | Right_brace
+  | Left_bracket
+  | Right_bracket
+  | Left_paren
+  | Right_paren
+  | Semicolon
+  | Greater_than
+  | Less_than
+  | Fore_slash
+  | Back_slash
+  | Percent
+  | Equals
+  | Ampersand
+  | Asterisk
+  | Minus
+  | Plus
+  | Minus_equal
+  | Div_equal
+  | Mul_equal
+  | And_equals
+  | Left_shift
+  | Right_shift
+  | Left_shift_equal
+  | Right_shift_equal
+  | Equal_equal
+  | Greater_than_equal
+  | Less_than_equal
+  | Not_equal
+  | Plus_plus
+  | Minus_minus
+  | Plus_equal
+
+let show_symbol (s : symbol) : string =
+  match s with
+  | Left_brace -> "["
+  | Right_brace -> "]"
+  | Left_bracket -> "{"
+  | Right_bracket -> "}"
+  | Left_paren -> "("
+  | Right_paren -> ")"
+  | Semicolon -> ";"
+  | Greater_than -> ">"
+  | Less_than -> "<"
+  | Fore_slash -> "/"
+  | Back_slash -> "\\"
+  | Percent -> "%"
+  | Equals -> "="
+  | Ampersand -> "&"
+  | Asterisk -> "*"
+  | Minus -> "-"
+  | Plus -> "+"
+  | Minus_equal -> "-="
+  | Div_equal -> "/="
+  | Mul_equal -> "*="
+  | And_equals -> "&="
+  | Left_shift -> "<<"
+  | Right_shift -> ">>"
+  | Left_shift_equal -> "<<="
+  | Right_shift_equal -> ">>="
+  | Equal_equal -> "=="
+  | Greater_than_equal -> ">="
+  | Less_than_equal -> "<="
+  | Not_equal -> "!="
+  | Plus_plus -> "++"
+  | Minus_minus -> "--"
+  | Plus_equal -> "+="
+;;
+
+type keyword =
+  | Auto
+  | Break
+  | Case
+  | Char
+  | Const
+  | Continue
+  | Default
+  | Do
+  | Double
+  | Int
+  | Else
+  | Long
+  | Enum
+  | Register
+  | Extern
+  | Return
+  | Float
+  | Short
+  | For
+  | Signed
+  | Goto
+  | Sizeof
+  | If
+  | Static
+  | Struct
+  | Switch
+  | Typedef
+  | Union
+  | Unsigned
+  | Void
+  | Volatile
+  | While
+
+let show_keyword (k : keyword) : string =
+  match k with
+  | Auto -> "AUTO"
+  | Break -> "BREAK"
+  | Case -> "CASE"
+  | Char -> "CHAR"
+  | Const -> "CONST"
+  | Continue -> "CONTINUE"
+  | Default -> "DEFAULT"
+  | Do -> "DO"
+  | Double -> "DOUBLE"
+  | Int -> "INT"
+  | Else -> "ELSE"
+  | Long -> "LONG"
+  | Enum -> "ENUM"
+  | Register -> "REGISTER"
+  | Extern -> "EXTERN"
+  | Return -> "RETURN"
+  | Float -> "FLOAT"
+  | Short -> "SHORT"
+  | For -> "FOR"
+  | Signed -> "SIGNED"
+  | Goto -> "GOTO"
+  | Sizeof -> "SIZEOF"
+  | If -> "IF"
+  | Static -> "STATIC"
+  | Struct -> "STRUCT"
+  | Switch -> "SWITCH"
+  | Typedef -> "TYPEDEF"
+  | Union -> "UNION"
+  | Unsigned -> "UNSIGNED"
+  | Void -> "VOID"
+  | Volatile -> "VOLATILE"
+  | While -> "WHILE"
+;;
+
+type constant =
+  | Character_constant of char
+  | Enumeration_constant of int
+  | Floating_constant of float
+  | Integer_constant of int
+  | String_constant of string
+
+let show_constant (c : constant) : string =
+  let open Printf in
+  match c with
+  | Character_constant c -> sprintf "CHAR(%c)" c
+  | Enumeration_constant i -> sprintf "ENUM(%d)" i
+  | Floating_constant f -> sprintf "FLOAT(%f)" f
+  | Integer_constant i -> sprintf "INT(%d)" i
+  | String_constant s -> sprintf "\"%s\"" s
+;;
+
+(* Identifiers can just be any string *)
+(* type identifier = string *)
+
+(* implement support for escaping characters*)
+let consume_c_string (input : string) : string * string =
+  let first_char = String.get input 0 in
+  if first_char != '"'
+  then "", input
+  else (
+    let buffer = Buffer.create 16 in
+    let rec loop i =
+      if i < String.length input && input.[i] != '"' && input.[i-1] != '\\'
+      then (
+        Buffer.add_char buffer input.[i];
+        loop (i + 1))
+      else i
+    in
+    let end_pos = loop 0 in
+    Buffer.contents buffer, String.sub input end_pos (String.length input - end_pos))
+;;
+
+let is_valid_first_char_identifier c =
+  (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c = '_'
+;;
+
+let is_valid_c_identifier_char c =
+  (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c = '_'
+;;
+
+(* Consume a valid C identifier from a string *)
+let consume_c_identifier (input : string) : string * string =
+  let first_char = String.get input 0 in
+  if is_valid_first_char_identifier first_char
+  then input, ""
+  else (
+    let buffer = Buffer.create 16 in
+    let rec loop i =
+      if i < String.length input && is_valid_c_identifier_char input.[i]
+      then (
+        Buffer.add_char buffer input.[i];
+        loop (i + 1))
+      else i
+    in
+    let end_pos = loop 0 in
+    Buffer.contents buffer, String.sub input end_pos (String.length input - end_pos))
+;;
+
+type token_type =
+  | Constant of constant
+  | Keyword of keyword
+  | Identifier of string
+  | Symbol of symbol
+
+type error =
+  { contents : string
+  ; column : int
+  ; line : int
+  }
 
 type token =
-  (* single char tokens *)
-  | LEFT_BRACE
-  | RIGHT_BRACE
-  | LEFT_BRACKET
-  | RIGHT_BRACKET
-  | LEFT_PAREN
-  | RIGHT_PAREN
-  | SEMICOLON
-  | GREATER_THAN
-  | LESS_THAN
-  | FORE_SLASH
-  | BACK_SLASH
-  | PERCENT
-  | EQUALS
-  | AMPERSAND
-  | ASTERISK
-  | MINUS
-  | PLUS
-  (* double or triple char tokens *)
-  | MINUS_EQUAL
-  | DIV_EQUAL
-  | MUL_EQUAL
-  | AND_EQUALS
-  | LEFT_SHIFT
-  | RIGHT_SHIFT
-  | LEFT_SHIFT_EQUAL
-  | RIGHT_SHIFT_EQUAL
-  | EQUAL_EQUAL
-  | GREATER_THAN_EQUAL
-  | LESS_THAN_EQUAL
-  | NOT_EQUAL
-  | PLUS_PLUS
-  | MINUS_MINUS
-  | PLUS_EQUAL
-  (* literals *)
-  | STRING_LITERAL of string
-  | INTEGER_LITERAL of int
-  | FLOAT_LITERAL of float
-  | IDENTIFIER of string
-  | ERROR of string
-  (* keywords *)
-  | AUTO
-  | BREAK
-  | CASE
-  | CHAR
-  | CONST
-  | CONTINUE
-  | DEFAULT
-  | DO
-  | DOUBLE
-  | ELSE
-  | ENUM
-  | EXTERN
-  | FLOAT
-  | FOR
-  | GOTO
-  | IF
-  | INLINE
-  | INT
-  | LONG
-  | REGISTER
-  | RESTRICT
-  | RETURN
-  | SHORT
-  | SIGNED
-  | SIZEOF
-  | STATIC
-  | STRUCT
-  | SWITCH
-  | TYPEDEF
-  | UNION
-  | UNSIGNED
-  | VOID
-  | VOLATILE
-  | WHILE
-  | EOF
+  { ttype : token_type
+  ; lexeme : string
+  ; line : int
+  }
 
-let pretty_fmt_token (token : token) : string =
-  let open Scanner in
-  match token with
-  | LEFT_BRACE -> "LEFT_BRACE"
-  | RIGHT_BRACE -> "RIGHT_BRACE"
-  | LEFT_BRACKET -> "LEFT_BRACKET"
-  | RIGHT_BRACKET -> "RIGHT_BRACKET"
-  | LEFT_PAREN -> "LEFT_PAREN"
-  | RIGHT_PAREN -> "RIGHT_PAREN"
-  | SEMICOLON -> "SEMICOLON"
-  | GREATER_THAN -> "GREATER_THAN"
-  | LESS_THAN -> "LESS_THAN"
-  | FORE_SLASH -> "FORE_SLASH"
-  | BACK_SLASH -> "BACK_SLASH"
-  | PERCENT -> "PERCENT"
-  | EQUALS -> "EQUALS"
-  | AMPERSAND -> "AMPERSAND"
-  | ASTERISK -> "ASTERISK"
-  | MINUS -> "MINUS"
-  | PLUS -> "PLUS"
-  (* double or triple char tokens *)
-  | MINUS_EQUAL -> "MINUS_EQUAL"
-  | DIV_EQUAL -> "DIV_EQUAL"
-  | MUL_EQUAL -> "MUL_EQUAL"
-  | AND_EQUALS -> "AND_EQUALS"
-  | LEFT_SHIFT -> "LEFT_SHIFT"
-  | RIGHT_SHIFT -> "RIGHT_SHIFT"
-  | LEFT_SHIFT_EQUAL -> "LEFT_SHIFT_EQUAL"
-  | RIGHT_SHIFT_EQUAL -> "RIGHT_SHIFT_EQUAL"
-  | EQUAL_EQUAL -> "EQUAL_EQUAL"
-  | GREATER_THAN_EQUAL -> "GREATER_THAN_EQUAL"
-  | LESS_THAN_EQUAL -> "LESS_THAN_EQUAL"
-  | NOT_EQUAL -> "NOT_EQUAL"
-  | PLUS_PLUS -> "PLUS_PLUS"
-  | MINUS_MINUS -> "MINUS_MINUS"
-  | PLUS_EQUAL -> "PLUS_EQUAL"
-  (* literals *)
-  | STRING_LITERAL x -> Printf.sprintf "STRING_LITERAL(%s)" x
-  | INTEGER_LITERAL x -> Printf.sprintf "INTEGER_LITERAL(%d)" x
-  | FLOAT_LITERAL x -> Printf.sprintf "FLOAT_LITERAL(%f)" x
-  | IDENTIFIER x -> Printf.sprintf "IDENTIFIER(%s)" x
-  | ERROR x -> Printf.sprintf "ERROR: %s" x
-  (* keywords *)
-  | AUTO -> "AUTO"
-  | BREAK -> "BREAK"
-  | CASE -> "CASE"
-  | CHAR -> "CHAR"
-  | CONST -> "CONST"
-  | CONTINUE -> "CONTINUE"
-  | DEFAULT -> "DEFAULT"
-  | DO -> "DO"
-  | DOUBLE -> "DOUBLE"
-  | ELSE -> "ELSE"
-  | ENUM -> "ENUM"
-  | EXTERN -> "EXTERN"
-  | FLOAT -> "FLOAT"
-  | FOR -> "FOR"
-  | GOTO -> "GOTO"
-  | IF -> "IF"
-  | INLINE -> "INLINE"
-  | INT -> "INT"
-  | LONG -> "LONG"
-  | REGISTER -> "REGISTER"
-  | RESTRICT -> "RESTRICT"
-  | RETURN -> "RETURN"
-  | SHORT -> "SHORT"
-  | SIGNED -> "SIGNED"
-  | SIZEOF -> "SIZEOF"
-  | STATIC -> "STATIC"
-  | STRUCT -> "STRUCT"
-  | SWITCH -> "SWITCH"
-  | TYPEDEF -> "TYPEDEF"
-  | UNION -> "UNION"
-  | UNSIGNED -> "UNSIGNED"
-  | VOID -> "VOID"
-  | VOLATILE -> "VOLATILE"
-  | WHILE -> "WHILE"
-  | EOF -> "EOF"
-;;
+type element =
+  | Token of token
+  | Error of error
 
-exception Not_start_with_quote
+(* TODO *)
+let show_element element = element
 
-(* Print a string of tokens to stdout. *)
-let rec print_tokens tok =
-  match tok with
-  | [] -> ()
-  | hd :: rest ->
-    print_string (pretty_fmt_token hd);
-    print_string " ";
-    print_tokens rest
-;;
-
-let eat_string str =
-  let first_char = String.get str 0 in
-  if first_char = '"'
-  then (
-    let pos = String.index_from str 1 '"' in
+(* Skip until a newline character and return the line without. *)
+let eat_til_first_newline (str : string) : string option =
+  try
+    let pos = String.index str '\n' in
     let len = String.length str in
-    let captured_string = String.sub str 1 (pos - 1) in
-    let trimmed_string = String.sub str (pos + 1) (len - pos - 1) in
-    captured_string, trimmed_string)
-  else raise Not_start_with_quote
+    Some (String.sub str (pos + 1) (len - pos - 1))
+  with
+  | Not_found -> None
 ;;
 
-let scan_number str =
+let rec eat_whitespace (str : string) : string option =
+  let len = String.length str in
+  if len = 0
+  then None
+  else (
+    let c = String.get str 0 in
+    if Utilities.is_whitespace c then eat_whitespace (String.sub str 1 len) else Some str)
+;;
+
+(* Print a string of elements to stdout. *)
+let print_elements elements =
+  List.iter (fun elem -> Printf.printf "%s " (show_element elem)) elements
+;;
+
+(* let scan_number str =
   let c = String.get str 0 in
   if String.length str = 0
   then ERROR "error"
@@ -200,13 +269,13 @@ let rec eat_integer str =
   if is_digit c
   then String.make 1 c ^ eat_integer (String.sub str 1 (String.length str - 1))
   else ""
-;;
+;; *)
 
-let scan_integer str = int_of_string (eat_integer str)
-let scan_float str = ()
+(* let scan_integer str = int_of_string (eat_integer str)
+let scan_float str = () *)
 
 (* Scan source code as a string and construct an array of type [ token ]. *)
-let rec scan str =
+(* let rec scan str current_line =
   let open Scanner in
   let len = String.length str in
   if len = 0
@@ -268,9 +337,9 @@ let rec scan str =
           then [ RIGHT_SHIFT_EQUAL ], 3
           else if next_c = '<'
           then [ RIGHT_SHIFT ], 2
-          else [ LESS_THAN ], 1
+          let captured_string, rest = eat_string str in
         | '"' ->
-          let captured_string = capture_string str in
+          let (captured_string, rest) = eat_string str in
           let str_len = String.length captured_string + 3 in
           [ STRING_LITERAL captured_string ], str_len - 1
           (* more complicated for decimal finding *)
@@ -282,4 +351,4 @@ let rec scan str =
         | _ -> [], 1
       in
       status @ scan (String.sub str skip (len - skip))))
-;;
+;; *)
