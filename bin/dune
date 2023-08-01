@@ -1,7 +1,7 @@
 (executable
  (public_name ascc)
  (name main)
- (libraries ascc integers))
+ (libraries ascc))
 
 (env
  (dev

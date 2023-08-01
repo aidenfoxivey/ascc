@@ -1,8 +1,5 @@
 (* Copyright 2023 Aiden Fox Ivey. Subject to the 3-Clause BSD license. *)
 
-open Ascc.Scanner
-open Ascc.Utilities
-
 let read_file filename =
   let ic = open_in filename in
   try
@@ -18,15 +15,16 @@ let read_file filename =
 ;;
 
 (* Dump contents of the file to stdout. *)
-let print_file_contents filename =
+let print_file_contents (filename : string) =
   let contents = read_file filename in
   print_string contents;
   print_newline ()
 ;;
 
-let run filename =
+let run (filename : string) =
+  let open Ascc.Scanner in
   let contents = read_file filename in
-  print_tokens (scan contents);
+  scan contents |> print_elements;
   print_newline ()
 ;;
 
