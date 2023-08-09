@@ -223,12 +223,14 @@ module TokenType = struct
     | Keyword of Keyword.t
     | Identifier of string
     | Symbol of Symbol.t
+    | Eof
 
   let to_string t =
     match t with
     | Constant c -> Constant.to_string c
     | Keyword k -> Keyword.to_string k
     | Identifier i -> Printf.sprintf "%s" i
+    | Eof -> ""
     | _ -> Utilities.unimplemented ()
   ;;
 end
@@ -245,7 +247,15 @@ module ScanError = struct
   ;;
 end
 
-module Token = struct
+module rec Token : sig
+  type t =
+    { ttype : TokenType.t
+    ; lexeme : string
+    ; line : int
+    }
+
+  val to_string : t -> string
+end = struct
   type t =
     { ttype : TokenType.t
     ; lexeme : string
@@ -259,9 +269,21 @@ module Token = struct
       t.lexeme
       t.line
   ;;
+
+  let to_element_list (l : t list) : Element.t list =
+    let rec aux acc = function
+      | [] -> List.rev acc
+      | hd :: tail -> aux (Element.Token hd :: acc) tail
+    in
+    aux [] l
+  ;;
 end
 
-module Element = struct
+and Element : sig
+  type t =
+    | Token of Token.t
+    | ScanError of ScanError.t
+end = struct
   type t =
     | Token of Token.t
     | ScanError of ScanError.t
@@ -271,6 +293,41 @@ module Element = struct
     | Token t -> Token.to_string t
     | ScanError e -> ScanError.to_string e
   ;;
+end
+
+module Scanner = struct
+  type t =
+    { source : string
+    ; tokens : Token.t list
+    ; errors : ScanError.t list
+    ; start : int
+    ; current : int
+    ; line : int
+    }
+
+  let make_scanner source =
+    { source; tokens = []; errors = []; start = 0; current = 0; line = 1 }
+  ;;
+
+  let get_ch (scanner : t) : char option =
+    if scanner.current = 0
+    then failwith "get_ch used incorrectly - scanner.current not supposed to be 0"
+    else if scanner.current > String.length scanner.source
+    then None
+    else Some scanner.source.[scanner.current - 1]
+  ;;
+
+  let advance (scanner : t) : t = { scanner with current = scanner.current + 1 }
+
+  let add_token (scanner : t) (token : Token.t) : t =
+    { scanner with tokens = token :: scanner.tokens }
+  ;;
+
+  let add_error (scanner : t) (error : ScanError.t) : t =
+    { scanner with errors = error :: scanner.errors }
+  ;;
+
+  let add_double_token (scanner : t) (token : Token.t) (token' : Token.t) : t = scanner
 end
 
 (* Skip until a newline character and return the line without. *)
@@ -292,76 +349,27 @@ let rec eat_integer str =
   else ""
 ;;
 
-let scan src = src
+let scan source =
+  let scanner = Scanner.make_scanner source in
+  print_elements scanner.tokens
+;;
 
-(* let rec scan_helper (str : string) (current_line : int64) : error list * int list = [], [] *)
-(*     let c = String.get str 0 in
-       if is_whitespace c
-       then scan (String.sub str 1 (len - 1))
-       else if c = '/' && len > 1 && String.get str 1 = '/'
-       then (
-       match eat_til_first_newline str with
-       | Some x -> scan x
-       | None -> [])
-       else (
-       let status, skip =
-        match c with
-        | '{' -> [ LEFT_BRACE ], 1
-        | '}' -> [ RIGHT_BRACE ], 1
-        | '(' -> [ LEFT_PAREN ], 1
-        | ')' -> [ RIGHT_PAREN ], 1
-        | '[' -> [ LEFT_BRACKET ], 1
-        | ']' -> [ RIGHT_BRACKET ], 1
-        | '\\' -> [ BACK_SLASH ], 1
-        | ';' -> [ SEMICOLON ], 1
-        | '*' ->
-          let next_c = String.get str 1 in
-          if next_c = '=' then [ MUL_EQUAL ], 2 else [ ASTERISK ], 1
-        | '&' ->
-          let next_c = String.get str 1 in
-          if next_c = '=' then [ AND_EQUALS ], 2 else [ AMPERSAND ], 1
-        | '/' ->
-          let next_c = String.get str 1 in
-          if next_c = '=' then [ DIV_EQUAL ], 2 else [ FORE_SLASH ], 1
-        | '=' ->
-          let next_c = String.get str 1 in
-          if next_c = '=' then [ EQUAL_EQUAL ], 2 else [ EQUALS ], 1
-        | '-' ->
-          let next_c = String.get str 1 in
-          if next_c = '=' then [ MINUS_EQUAL ], 2 else [ MINUS ], 1
-        | '+' ->
-          let next_c = String.get str 1 in
-          if next_c = '=' then [ PLUS_EQUAL ], 2 else [ PLUS ], 1
-        | '>' ->
-          let next_c = String.get str 1 in
-          let next_next_c = String.get str 2 in
-          if next_c = '='
-          then [ GREATER_THAN_EQUAL ], 2
-          else if next_c = '>' && next_next_c = '='
-          then [ LEFT_SHIFT_EQUAL ], 3
-          else if next_c = '>'
-          then [ LEFT_SHIFT ], 2
-          else [ GREATER_THAN ], 1
-        | '<' ->
-          let next_c = String.get str 1 in
-          let next_next_c = String.get str 2 in
-          if next_c = '='
-          then [ LESS_THAN_EQUAL ], 2
-          else if next_c = '<' && next_next_c = '='
-          then [ RIGHT_SHIFT_EQUAL ], 3
-          else if next_c = '<'
-          then [ RIGHT_SHIFT ], 2
-          let captured_string, rest = eat_string str in
-        | '"' ->
-          let (captured_string, rest) = eat_string str in
-          let str_len = String.length captured_string + 3 in
-          [ STRING_LITERAL captured_string ], str_len - 1
-          (* more complicated for decimal finding *)
-        | c when is_digit c ->
-          let captured_num = capture_num str in
-          let str_len = String.length captured_num in
-          [ INTEGER_LITERAL 2 ], str_len
-        | c when is_alpha c -> [ AUTO ], 1
-        | _ -> [], 1
-       in
-       status @ scan (String.sub str skip (len - skip)))) *)
+let scan_token scanner =
+  let open Scanner in
+  let open Symbol in
+  let scanner = advance scanner in
+  match get_ch scanner with
+  | None -> scanner
+  | Some c ->
+    (match c with
+     | '(' -> add_token scanner Left_paren
+     | ')' -> add_token scanner Right_paren
+     | '{' -> add_token scanner Left_brace
+     | '}' -> add_token scanner Right_brace
+     | '[' -> add_token scanner Left_bracket
+     | ']' -> add_token scanner Right_bracket
+     | ' ' | '\t' | '\r' -> scanner
+     | '\n' -> { scanner with line = scanner.line + 1 }
+     | c when is_number c -> scanner
+     | _ -> add_error scanner)
+;;

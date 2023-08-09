@@ -14,7 +14,6 @@
 
 (license MIT)
 
-; it doesn't exist, I'm sorry :(
 (documentation https://url/to/documentation)
 
 (package

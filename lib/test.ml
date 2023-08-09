@@ -1,10 +1,6 @@
 (* Copyright 2023 Aiden Fox Ivey. Subject to the 3-Clause BSD license. *)
 
-(* open Core
-   open Utilities
-   open Preprocessor
-   open Scanner
-
+(*
    let%expect_test "trim one new line" =
    match eat_til_first_newline "\ncool" with
    | Some s ->

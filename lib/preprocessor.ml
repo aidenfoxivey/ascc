@@ -1,5 +1,15 @@
 (* Copyright 2023 Aiden Fox Ivey. Subject to the 3-Clause BSD license. *)
 
+(*
+   * Notes:
+   * - strip the existing lines and replace them with the good old \n character
+   * - multiline comments must be removed
+   *
+   *
+   *
+   *
+*)
+
 module DirectiveType = struct
   type t =
     | Define of string * string
