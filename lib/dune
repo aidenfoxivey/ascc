@@ -1,5 +1,7 @@
 (library
  (name ascc)
+ (instrumentation
+  (backend bisect_ppx))
  (libraries base core)
  (preprocess
   (pps ppx_expect))
