@@ -103,6 +103,7 @@ module TokenType : sig
     | Keyword of Keyword.t
     | Identifier of string
     | Symbol of Symbol.t
+    | Eof
 
   val to_string : t -> string
 end

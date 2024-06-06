@@ -288,11 +288,13 @@ end = struct
     | Token of Token.t
     | ScanError of ScanError.t
 
-  let to_string t =
+(*   let to_string t =
     match t with
     | Token t -> Token.to_string t
     | ScanError e -> ScanError.to_string e
   ;;
+ *)
+  let to_string t = t
 end
 
 module Scanner = struct
@@ -339,7 +341,7 @@ let eat_til_first_newline (str : string) : string option =
 
 (* Print a string of elements to stdout. *)
 let print_elements elements =
-  List.iter ~f:(fun elem -> Printf.printf "%s\n" (Element.to_string elem)) elements
+  List.iter ~f:(fun elem -> Printf.printf "%s\n" (string_of_int 4)) elements
 ;;
 
 let rec eat_integer str =
@@ -362,14 +364,7 @@ let scan_token scanner =
   | None -> scanner
   | Some c ->
     (match c with
-     | '(' -> add_token scanner Left_paren
-     | ')' -> add_token scanner Right_paren
-     | '{' -> add_token scanner Left_brace
-     | '}' -> add_token scanner Right_brace
-     | '[' -> add_token scanner Left_bracket
-     | ']' -> add_token scanner Right_bracket
      | ' ' | '\t' | '\r' -> scanner
      | '\n' -> { scanner with line = scanner.line + 1 }
-     | c when is_number c -> scanner
-     | _ -> add_error scanner)
+     | c -> scanner)
 ;;
